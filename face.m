@@ -5,10 +5,10 @@
 
 // to store the bounding box
 typedef struct {
-    int top;
-    int left;
-    int width;
-    int height;
+    int* top;
+    int* left;
+    int* width;
+    int* height;
 } Face;
 
 
@@ -86,8 +86,13 @@ int main(int argc, const char * argv[])
             NSLog(@"%@", faceId);
 
             // get face bounding box
-            // NSDictionary * rect = [dict objectForKey:@"faceRectangle"];
-
+            NSDictionary * rect = [dict objectForKey:@"faceRectangle"];
+            groundTruth.top = (int*) [rect objectForKey:@"top"];
+            groundTruth.left = (int*) [rect objectForKey:@"left"];
+            groundTruth.width = (int*) [rect objectForKey:@"width"];
+            groundTruth.height = (int*) [rect objectForKey:@"height"];
+            
+            // NSLog(@"%@", groundTruth.top);
         }
         _connectionData = nil;
     }
@@ -121,6 +126,13 @@ int main(int argc, const char * argv[])
         for (NSDictionary * dict in json) {
             selfieId = [dict objectForKey:@"faceId"];
             NSLog(@"%@", selfieId);
+
+             // get face bounding box
+            NSDictionary * rect = [dict objectForKey:@"faceRectangle"];
+            selfie.top = (int*) [rect objectForKey:@"top"];
+            selfie.left = (int*) [rect objectForKey:@"left"];
+            selfie.width = (int*) [rect objectForKey:@"width"];
+            selfie.height = (int*) [rect objectForKey:@"height"];
         }
         _connectionData = nil;
     }
@@ -158,6 +170,7 @@ int main(int argc, const char * argv[])
         NSString* jsonString = [[NSString alloc] initWithData:_connectionData2 encoding:NSUTF8StringEncoding];
         NSLog(@"%@", jsonString);
 
+        // determine if identical = true
         NSRange checkTrue = [jsonString rangeOfString:@"true"];
         if (checkTrue.location == NSNotFound) {
             NSLog(@"not identical");
