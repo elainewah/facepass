@@ -29,6 +29,9 @@ NSString *pick_secret_points = @"Press a secret point on your face";
 NSString *pick_guess_image = @"Take a selfie to authenticate";
 NSString *pick_guess_points = @"Press your secret point";
 
+float secret_sleep = .5;
+float guess_sleep = 2;
+
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -36,6 +39,7 @@ NSString *pick_guess_points = @"Press your secret point";
     
     if ([_statusTest.text isEqualToString:@"status"]) {
         _statusTest.text = pick_secret_image;
+        [NSThread sleepForTimeInterval:secret_sleep];
     }
 
     // Do any additional setup after loading the view, typically from a nib.
@@ -88,23 +92,28 @@ NSString *pick_guess_points = @"Press your secret point";
 
 
 
-CGPoint begin_point;
-
-- (void) touchesBegan:(NSSet *)touches
-            withEvent:(UIEvent *)event {    UITouch *touch = [touches anyObject];
-    begin_point = [touch locationInView:self.view];
-   }
 
 - (bool) close:(CGPoint)test_point {
     CGFloat dx = test_point.x - secret_point.x;
     CGFloat dy = test_point.y - secret_point.y;
-    if (dx*dx + dy*dy < 100) {
+    if (dx*dx + dy*dy < 200) {
         return true;
     }
     else {
         return false;
     }
 }
+
+
+- (void) touchesBegan:(NSSet *)touches
+            withEvent:(UIEvent *)event {
+    // When secret points are selected, we solicit a verification
+    if ([_statusTest.text isEqualToString: pick_secret_points]) {
+        _statusTest.text = pick_guess_image;
+    }
+}
+
+int wrong_tries = 0;
 
 - (void) touchesEnded:(NSSet *)touches
             withEvent:(UIEvent *)event {
@@ -114,10 +123,10 @@ CGPoint begin_point;
     NSLog(@"%@", _statusTest.text);
     
     // When secret points are selected, we solicit a verification
-    if ([_statusTest.text isEqualToString: pick_secret_points]) {
+    if ([_statusTest.text isEqualToString: pick_guess_image]) {
         secret_point = point;
-        _statusTest.text = pick_guess_image;
         
+        [NSThread sleepForTimeInterval:guess_sleep];
         UIImagePickerController *imagePickerController = [[UIImagePickerController alloc] init];
         imagePickerController.sourceType = UIImagePickerControllerSourceTypeCamera;
         imagePickerController.cameraDevice = UIImagePickerControllerCameraDeviceFront;
@@ -127,7 +136,7 @@ CGPoint begin_point;
         
     }
     // This is the case when the new image has been set
-    else if(![_statusTest.text isEqualToString: @"success"]){
+    else if(![_statusTest.text isEqualToString: @"success"] && ![_statusTest.text isEqualToString: @"failure"] ){
         
         if ([self close:point]) {
             _statusTest.text = @"success";
@@ -137,8 +146,17 @@ CGPoint begin_point;
             CGFloat dX = secret_point.x - point.x;
             CGFloat dY = secret_point.y - point.y;
             
-            _statusTest.text = [NSString stringWithFormat:
-                                @"%.1f, %.1f", dX, dY];
+            wrong_tries += 1;
+            
+            if (wrong_tries > 2) {
+                self.imageView.image = [UIImage imageNamed:@"failure"];
+                _statusTest.text = @"failure";
+            }
+            
+            else {
+                _statusTest.text = [NSString stringWithFormat:
+                                @"%.1f, %.1f, Wrong guess #%d", dX, dY, wrong_tries];
+            }
         }
         
         /*
