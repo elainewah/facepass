@@ -24,18 +24,27 @@
 UIImage *secret_image;
 CGPoint secret_point;
 
-NSString *pick_secret_image = @"Select your secret image";
-NSString *pick_secret_points = @"Press a secret point on your face";
-NSString *pick_guess_image = @"Take a selfie to authenticate";
-NSString *pick_guess_points = @"Press your secret point";
+NSString *pick_secret_image = @"Take your FacePass";
+NSString *pick_secret_points = @"Tap a spot on your face";
+NSString *pick_guess_image = @"Thanks! Take a selfie to authenticate";
+NSString *pick_guess_points = @"Tap your FacePass";
+NSString *success_string = @"Success!";
+NSString *failure_string = @"Failure!";
+NSString *wrong_face = @"FacePasses don't match";
 
 float secret_sleep = .5;
 float guess_sleep = 2;
 
+AllFaces allFaces;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
     [self.navigationController setNavigationBarHidden:YES];
+    
+    
+    
+    //Utils *u = [[Utils alloc] init];
+    //[u sendImage : [UIImage imageNamed:@"travis"]];
     
     if ([_statusTest.text isEqualToString:@"status"]) {
         _statusTest.text = pick_secret_image;
@@ -82,21 +91,41 @@ float guess_sleep = 2;
         secret_image = image;
         _statusTest.text = pick_secret_points;
         self.imageView.image = image;
+        
     }
     else {
         _statusTest.text = pick_guess_points;
         self.imageView.image = image;
+        
+        Utils *u = [[Utils alloc] init];
+        allFaces = [u sendImage : secret_image IMGARG2 : image];
+        if (!allFaces.identical) {
+            _statusTest.text = wrong_face;
+            self.imageView.image = [UIImage imageNamed:@"failure"];
+        }
     }
     [self dismissViewControllerAnimated:YES completion:nil];
 }
 
 
+float calc_pct(float coord, int begin, int length) {
+    return (coord - begin) / length;
+}
 
 
 - (bool) close:(CGPoint)test_point {
-    CGFloat dx = test_point.x - secret_point.x;
-    CGFloat dy = test_point.y - secret_point.y;
-    if (dx*dx + dy*dy < 200) {
+    // First convert to percentages
+    float test_x_pct = calc_pct(test_point.x, allFaces.guessed.left, allFaces.guessed.width);
+    float test_y_pct = calc_pct(test_point.y, allFaces.guessed.top, allFaces.guessed.height);
+    
+    float secret_x_pct = calc_pct(secret_point.x, allFaces.secret.left, allFaces.secret.width);
+    float secret_y_pct = calc_pct(secret_point.y, allFaces.secret.top, allFaces.secret.height);
+    
+    
+    CGFloat dx = test_x_pct - secret_x_pct;
+    CGFloat dy = test_y_pct - secret_y_pct;
+    
+    if (dx*dx + dy*dy < .10) {
         return true;
     }
     else {
@@ -125,6 +154,7 @@ int wrong_tries = 0;
     // When secret points are selected, we solicit a verification
     if ([_statusTest.text isEqualToString: pick_guess_image]) {
         secret_point = point;
+        //NSLog(@"%f, %f", secret_point.x, secret_point.y);
         
         [NSThread sleepForTimeInterval:guess_sleep];
         UIImagePickerController *imagePickerController = [[UIImagePickerController alloc] init];
@@ -136,10 +166,10 @@ int wrong_tries = 0;
         
     }
     // This is the case when the new image has been set
-    else if(![_statusTest.text isEqualToString: @"success"] && ![_statusTest.text isEqualToString: @"failure"] ){
+    else if(![_statusTest.text isEqualToString: success_string] && ![_statusTest.text isEqualToString: failure_string] && ![_statusTest.text isEqualToString: wrong_face]){
         
         if ([self close:point]) {
-            _statusTest.text = @"success";
+            _statusTest.text = success_string;
             self.imageView.image = [UIImage imageNamed:@"success"];
         }
         else {
@@ -150,12 +180,13 @@ int wrong_tries = 0;
             
             if (wrong_tries > 2) {
                 self.imageView.image = [UIImage imageNamed:@"failure"];
-                _statusTest.text = @"failure";
+                _statusTest.text = failure_string;
             }
             
             else {
                 _statusTest.text = [NSString stringWithFormat:
-                                @"%.1f, %.1f, Wrong guess #%d", dX, dY, wrong_tries];
+                                    @"Wrong! %d guesses remaining", 4-wrong_tries];
+                                //@"%.1f, %.1f, Wrong guess #%d", dX, dY, wrong_tries];
             }
         }
         
