@@ -1,6 +1,6 @@
 #import <Foundation/Foundation.h>
 #import <Foundation/NSObject.h>
-//#import <UIKit/UIKit.h>
+#import <UIKit/UIKit.h>
 
 
 // to store the bounding box
@@ -12,6 +12,36 @@ typedef struct {
 } Face;
 
 
+NSData* getImageViaURL(NSString *url, NSMutableURLRequest* _request) {
+    [_request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+
+    NSDictionary * jsonDict = [[NSDictionary alloc] initWithObjectsAndKeys:
+                url, @"url", nil];
+    NSError *error = nil;
+    NSData *body = [NSJSONSerialization dataWithJSONObject:jsonDict options:NSJSONWritingPrettyPrinted error:&error];
+    return body;
+}
+
+// assumes JPG representation for images
+NSData* getImageLocally(UIImage *image, NSMutableURLRequest* _request) {
+    NSData *imageData = [NSData dataWithData:UIImageJPEGRepresentation(image)];
+
+    NSString *boundary = @"14737809831466499882746641449";
+    NSString *contentType = [NSString stringWithFormat:@"multipart/form-data; boundary=%@",boundary];
+    [_request addValue:contentType forHTTPHeaderField: @"Content-Type"];
+
+    NSMutableData *body = [NSMutableData data];
+    [body appendData:[[NSString stringWithFormat:@"\r\n--%@\r\n",boundary] dataUsingEncoding:NSUTF8StringEncoding]];
+    [body appendData:[@"Content-Type: application/octet-stream\r\n\r\n" dataUsingEncoding:NSUTF8StringEncoding]];
+    [body appendData:[NSData dataWithData:imageData]];
+    [body appendData:[[NSString stringWithFormat:@"\r\n--%@--\r\n",boundary] dataUsingEncoding:NSUTF8StringEncoding]];
+
+    return body;
+}
+
+
+
+
 int main(int argc, const char * argv[])
 {
     Face groundTruth;
@@ -20,9 +50,10 @@ int main(int argc, const char * argv[])
     NSString* selfieId = nil;
 
     NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
+    NSError *error = nil;
 
 
-
+    ///////////////////////////////////////////////////////////////////////////
     // ANALYZE STORED (GROUND TRUTH) IMAGE    
     NSString* path = @"https://api.projectoxford.ai/face/v0/detections";
     path = [path stringByAppendingFormat:@"?entities=true&analyzesFaceLandmarks=true&analyzesAge=false&analyzesGender=false&analyzesHeadPose=false"];
@@ -31,36 +62,15 @@ int main(int argc, const char * argv[])
     [_request setValue:@"c9c3f42528ad4642910d3fc587c06b18" forHTTPHeaderField:@"Ocp-Apim-Subscription-Key"];
     [_request setHTTPMethod:@"POST"];
 
+    // ======================================================================
     // local image
-    /*
-    UIImage *image = [UIImage imageWithContentsOfFile: @"./img/photo.jpg"];
-    NSData *imageData = [NSData dataWithData:UIImageJPEGRepresentation(image)];
-
-    [_request setValue:@"application/octet-stream" forHTTPHeaderField:@"Content-Type"];
-
-    NSString *boundary = @"14737809831466499882746641449";
-    NSString *contentType = [NSString stringWithFormat:@"multipart/form-data; boundary=%@",boundary];
-    [_request addValue:contentType forHTTPHeaderField: @"Content-Type"];
-
-    //NSData *imageData = UIImageJPEGRepresentation("./img/photo.jpg", 0.2);
-    NSMutableData *body = [NSMutableData data];
-    //[body appendData:[NSData datawithData:imageData]];
-
-    [body appendData:[[NSString stringWithFormat:@"\r\n--%@\r\n",boundary] dataUsingEncoding:NSUTF8StringEncoding]];
-    [body appendData:[[NSString stringWithFormat:@"Content-Disposition:form-data; name=\"file\"; filename=\"%@\"\r\n","./img/photo.jpg"] dataUsingEncoding:NSUTF8StringEncoding]];
-    [body appendData:[@"Content-Type: application/octet-stream\r\n\r\n" dataUsingEncoding:NSUTF8StringEncoding]];
-    [body appendData:[NSData dataWithData:imageData]];
-    [body appendData:[[NSString stringWithFormat:@"\r\n--%@--\r\n",boundary] dataUsingEncoding:NSUTF8StringEncoding]];
-    */
-
+    // NSData* body = getImageLocally(image, _request);
     
     // image URL 
-    [_request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
-    NSDictionary * jsonDict = [[NSDictionary alloc] initWithObjectsAndKeys:
-			    @"http://web.eecs.umich.edu/~ewah/img/photo.jpg", @"url",
-			    nil];
-    NSError *error = nil;
-    NSData *body = [NSJSONSerialization dataWithJSONObject:jsonDict options:NSJSONWritingPrettyPrinted error:&error];
+    NSData* body = getImageViaURL(@"http://web.eecs.umich.edu/~ewah/img/photo.jpg", _request);
+    // ======================================================================
+
+
     [_request setHTTPBody:body];
    
     NSURLResponse *response = nil;
@@ -100,14 +110,15 @@ int main(int argc, const char * argv[])
     //////////////////////////////////////////////////////////////////////////////////
     // ANALYZE SELFIE
 
+    // ======================================================================
+    // local image
+    // NSData* body2 = getImageLocally(image2, _request);
+
     // image URL 
-    [_request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
-    NSDictionary * selfieDict = [[NSDictionary alloc] initWithObjectsAndKeys:
-                @"http://vision.ucsd.edu/~cwah/assets/img.jpg", @"url",
-                nil];
-    error = nil;
-    body = [NSJSONSerialization dataWithJSONObject:selfieDict options:NSJSONWritingPrettyPrinted error:&error];
-    [_request setHTTPBody:body];
+    NSData* body2 = getImageViaURL(@"http://vision.ucsd.edu/~cwah/assets/img.jpg", _request);
+    // ==================================================
+
+    [_request setHTTPBody:body2];
     response = nil;
     _connectionData = [NSURLConnection sendSynchronousRequest:_request returningResponse:&response error:&error];
 
@@ -151,9 +162,6 @@ int main(int argc, const char * argv[])
     [_request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
     NSDictionary * verifyDict = [[NSDictionary alloc] initWithObjectsAndKeys:
             faceId, @"faceId1", selfieId, @"faceId2", nil];
-    // NSLog(@"%@", verifyDict);
-    // NSLog(@"Face values: %@", [verifyDict allValues]);
-    // NSLog(@"Face keys: %@", [verifyDict allKeys]);
 
     error = nil;
     NSData *verifyBody = [NSJSONSerialization dataWithJSONObject:verifyDict options:0 error:&error];
@@ -196,6 +204,7 @@ int main(int argc, const char * argv[])
             NSLog(@"%lf", confidence);
         }
 
+        // TODO: could not get JSON parsing to work correctly
         // if (nil != _connectionData2) {
         //     json = [NSJSONSerialization JSONObjectWithData:_connectionData2 options:NSJSONReadingAllowFragments error:&error];
         // }
@@ -216,6 +225,9 @@ int main(int argc, const char * argv[])
 
         _connectionData2 = nil;
     }
+
+
+    // TODO if confidence is greater than some threshold and identical == true, then should be a match!
 
 
     [pool drain];
