@@ -125,7 +125,7 @@ float calc_pct(float coord, int begin, int length) {
     CGFloat dx = test_x_pct - secret_x_pct;
     CGFloat dy = test_y_pct - secret_y_pct;
     
-    if (dx*dx + dy*dy < .10) {
+    if (dx*dx + dy*dy < .08) {
         return true;
     }
     else {
@@ -166,16 +166,13 @@ int wrong_tries = 0;
         
     }
     // This is the case when the new image has been set
-    else if(![_statusTest.text isEqualToString: success_string] && ![_statusTest.text isEqualToString: failure_string] && ![_statusTest.text isEqualToString: wrong_face]){
-        
+    //else if(![_statusTest.text isEqualToString: success_string] && ![_statusTest.text isEqualToString: failure_string] && ![_statusTest.text isEqualToString: wrong_face]){
+    else if([_statusTest.text isEqualToString: pick_guess_points] || ![_statusTest.text isEqualToString: wrong_face]){
         if ([self close:point]) {
             _statusTest.text = success_string;
             self.imageView.image = [UIImage imageNamed:@"success"];
         }
         else {
-            CGFloat dX = secret_point.x - point.x;
-            CGFloat dY = secret_point.y - point.y;
-            
             wrong_tries += 1;
             
             if (wrong_tries > 2) {
@@ -189,13 +186,13 @@ int wrong_tries = 0;
                                 //@"%.1f, %.1f, Wrong guess #%d", dX, dY, wrong_tries];
             }
         }
-        
-        /*
-        Utils *u = [[Utils alloc] init];
-        [u sendImage];
-         */
     }
-    
+    else if([_statusTest.text isEqualToString: success_string] || ![_statusTest.text isEqualToString: failure_string] || ![_statusTest.text isEqualToString: wrong_face])
+    {
+        wrong_tries = 4;
+        secret_image = nil;        _statusTest.text = pick_secret_image;
+        self.imageView.image = nil;
+    }
     
 }
 

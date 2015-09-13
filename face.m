@@ -3,14 +3,6 @@
 #import <UIKit/UIKit.h>
 
 
-// to store the bounding box
-typedef struct {
-    int* top;
-    int* left;
-    int* width;
-    int* height;
-} Face;
-
 
 NSData* getImageViaURL(NSString *url, NSMutableURLRequest* _request) {
     [_request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
