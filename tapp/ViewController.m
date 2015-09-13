@@ -32,8 +32,8 @@ NSString *success_string = @"Success!";
 NSString *failure_string = @"Failure!";
 NSString *wrong_face = @"FacePasses don't match";
 
-float secret_sleep = .5;
-float guess_sleep = 2;
+float secret_sleep = 1;
+float guess_sleep = 1;
 
 AllFaces allFaces;
 
